@@ -7,6 +7,140 @@
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
+<!-- Smooth Wavy Canvas -->
+<div class="smooth-wavy-container" style="position:absolute; inset:0; overflow:hidden; background-color:#000; z-index:0;"></div>
+<script>
+(function(containerSelector){
+  const container = document.querySelector(containerSelector);
+  if(!container) return;
+
+  const canvas = document.createElement('canvas');
+  canvas.style.display = 'block';
+  canvas.style.width = '100%';
+  canvas.style.height = '100%';
+  container.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+
+  let time = 0;
+  const mouse = { x: 0, y: 0, isDown: false };
+
+  const backgroundColor = '#000';
+  const primaryColor = '147, 51, 234';   // #9333ea
+  const secondaryColor = '186, 85, 255'; // lighter purple
+  const accentColor = '216, 135, 255';   // accent purple
+  const lineOpacity = 1;
+  const animationSpeed = 0.004;
+
+  function resizeCanvas() {
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+  }
+
+  function getMouseInfluence(x, y) {
+    const dx = x - mouse.x;
+    const dy = y - mouse.y;
+    const distance = Math.sqrt(dx*dx + dy*dy);
+    const maxDistance = 200;
+    return Math.max(0, 1 - distance / maxDistance);
+  }
+
+  function animate() {
+    const width = canvas.width;
+    const height = canvas.height;
+    time += animationSpeed;
+
+    ctx.fillStyle = backgroundColor;
+    ctx.fillRect(0, 0, width, height);
+
+    // Primary lines
+    const numPrimaryLines = 35;
+    for (let i = 0; i < numPrimaryLines; i++) {
+      const yPos = (i / numPrimaryLines) * height;
+      const mouseInfl = getMouseInfluence(width/2, yPos);
+      const amplitude = 45 + 25 * Math.sin(time*0.25 + i*0.15) + mouseInfl*25;
+      const frequency = 0.006 + 0.002 * Math.sin(time*0.12 + i*0.08) + mouseInfl*0.001;
+      const speed = time*(0.6 + 0.3 * Math.sin(i*0.12)) + mouseInfl*time*0.3;
+      const thickness = 0.6 + 0.4*Math.sin(time+i*0.25) + mouseInfl*0.8;
+      const opacity = (0.12 + 0.08*Math.abs(Math.sin(time*0.3 + i*0.18)) + mouseInfl*0.15)*lineOpacity;
+
+      ctx.beginPath();
+      ctx.lineWidth = thickness;
+      ctx.strokeStyle = `rgba(${primaryColor}, ${opacity})`;
+      for (let x = 0; x < width; x += 2) {
+        const localMouseInfl = getMouseInfluence(x, yPos);
+        const y = yPos + amplitude*Math.sin(x*frequency + speed) + localMouseInfl*Math.sin(time*2 + x*0.008)*15;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    // Secondary lines
+    const numSecondaryLines = 25;
+    for (let i = 0; i < numSecondaryLines; i++) {
+      const xPos = (i / numSecondaryLines) * width;
+      const mouseInfl = getMouseInfluence(xPos, height/2);
+      const amplitude = 40 + 20*Math.sin(time*0.18 + i*0.14) + mouseInfl*20;
+      const frequency = 0.007 + 0.003*Math.cos(time*0.14 + i*0.09) + mouseInfl*0.002;
+      const speed = time*(0.5 + 0.25*Math.cos(i*0.16)) + mouseInfl*time*0.25;
+      const thickness = 0.5 + 0.3*Math.sin(time + i*0.35) + mouseInfl*0.7;
+      const opacity = (0.1 + 0.06*Math.abs(Math.sin(time*0.28 + i*0.2)) + mouseInfl*0.12)*lineOpacity;
+
+      ctx.beginPath();
+      ctx.lineWidth = thickness;
+      ctx.strokeStyle = `rgba(${secondaryColor}, ${opacity})`;
+      for (let y = 0; y < height; y += 2) {
+        const localMouseInfl = getMouseInfluence(xPos, y);
+        const x = xPos + amplitude*Math.sin(y*frequency + speed) + localMouseInfl*Math.sin(time*2 + y*0.008)*12;
+        if (y === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    // Accent lines
+    const numAccentLines = 15;
+    for (let i = 0; i < numAccentLines; i++) {
+      const offset = (i / numAccentLines) * width*1.5 - width*0.25;
+      const amplitude = 30 + 15*Math.cos(time*0.22 + i*0.12);
+      const frequency = 0.01 + 0.004*Math.sin(time*0.16 + i*0.1);
+      const phase = time*(0.4 + 0.2*Math.sin(i*0.13));
+      const thickness = 0.4 + 0.25*Math.sin(time + i*0.28);
+      const opacity = (0.06 + 0.04*Math.abs(Math.sin(time*0.24 + i*0.15)))*lineOpacity;
+
+      ctx.beginPath();
+      ctx.lineWidth = thickness;
+      ctx.strokeStyle = `rgba(${accentColor}, ${opacity})`;
+      const steps = 100;
+      for (let j = 0; j <= steps; j++) {
+        const progress = j/steps;
+        const baseX = offset + progress*width;
+        const baseY = progress*height + amplitude*Math.sin(progress*6 + phase);
+        const mouseInfl = getMouseInfluence(baseX, baseY);
+        const x = baseX + mouseInfl*Math.sin(time*1.5 + progress*6)*8;
+        const y = baseY + mouseInfl*Math.cos(time*1.5 + progress*6)*8;
+        if (j===0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = e.clientX - rect.left;
+    mouse.y = e.clientY - rect.top;
+  });
+  canvas.addEventListener('mousedown', () => mouse.isDown = true);
+  canvas.addEventListener('mouseup', () => mouse.isDown = false);
+
+  animate();
+})('.smooth-wavy-container');
+</script>
 <body>
 
     <!-- Navigation -->
@@ -33,6 +167,8 @@
             </a>
         </div>
     </nav>
+
+
 
     <!-- Hero Section -->
     <section id="home" class="hero-section">
@@ -436,6 +572,18 @@
                     <div class="portfolio-info">
                         <div class="portfolio-category">Bangla Typography</div>
                         <h3>চিত্রের বার্তা</h3>
+                    </div>
+                    </a>
+                </div>
+
+                <div class="portfolio-card" data-category="uiux">
+                    <a href="https://www.behance.net/gallery/226336565/_" target="_blank" style="text-decoration: none;">
+                    <div class="portfolio-image">
+                        <img src="images/Image_22.png" alt="UI/UX Design">
+                    </div>
+                    <div class="portfolio-info">
+                        <div class="portfolio-category">Bangla Typography</div>
+                        <h3>হুজগে গুজব</h3>
                     </div>
                     </a>
                 </div>
